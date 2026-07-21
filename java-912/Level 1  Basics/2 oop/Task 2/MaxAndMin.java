@@ -1,6 +1,6 @@
 import java.util.Scanner;
 
-class Calculator {
+class MaxAndMin {
     private int a;
     private char op;
     private int b;
