@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شرح مفصل لإطار عمل المجموعات Java Collections Framework</title>
+    
+    <!-- External CSS Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: Cairo for Arabic & Fira Code for Code Snippets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS Styles -->
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #2c2520;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            color: #2d241e;
+        }
+
+        /* Presentation Wrapper */
+        .presentation-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 1280px;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+
+        /* Outer Slide Card Container featuring user frame styling */
+        .slide-frame {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #E5D5C3; /* Sandy beige base */
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* SVG Vector Background Frame matching the user's border template */
+        .frame-background-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Inner White Slide Canvas Area */
+        .slide-content-area {
+            position: absolute;
+            top: 6.5%;
+            left: 5%;
+            right: 5%;
+            bottom: 7%;
+            background: #ffffff;
+            border-radius: 16px;
+            z-index: 2;
+            padding: 30px 45px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Custom Scrollbar for inner canvas */
+        .slide-content-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .slide-content-area::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .slide-content-area::-webkit-scrollbar-thumb {
+            background: #c2b29f;
+            border-radius: 10px;
+        }
+
+        h1, h2, h3 {
+            color: #4A3525;
+            font-weight: 800;
+        }
+
+        .slide-title {
+            font-size: 1.75rem;
+            border-bottom: 3px solid #D4B996;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Code Block Styling */
+        .code-container {
+            direction: ltr;
+            text-align: left;
+            font-family: 'Fira Code', monospace;
+            background-color: #1E1E1E;
+            color: #D4D4D4;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-top: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #3c3836;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            background: #A87C4F;
+            color: white;
+        }
+
+        /* Java Code Syntax Highlighting colors */
+        .kw { color: #569CD6; font-weight: bold; } /* Keywords */
+        .dt { color: #4EC9B0; } /* Data Types & Classes */
+        .st { color: #CE9178; } /* Strings */
+        .cm { color: #6A9955; font-style: italic; } /* Comments */
+        .fn { color: #DCDCAA; } /* Function names */
+        .nm { color: #B5CEA8; } /* Numbers */
+        .an { color: #9CDCFFE6; } /* Annotations */
+
+        /* Feature Card Pills */
+        .feature-card {
+            background: #FDFBF7;
+            border: 1px solid #EAE1D3;
+            border-right: 5px solid #8C6E54;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(140, 110, 84, 0.15);
+        }
+
+        /* Table styling for performance comparison */
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+        .custom-table th {
+            background-color: #8C6E54;
+            color: white;
+            padding: 8px 12px;
+            text-align: right;
+        }
+        .custom-table td {
+            border-bottom: 1px solid #EAE1D3;
+            padding: 8px 12px;
+            color: #4A3525;
+        }
+        .custom-table tr:nth-child(even) {
+            background-color: #FAF6F0;
+        }
+
+        /* Navigation Floating Toolbar */
+        .nav-toolbar {
+            position: absolute;
+            bottom: 18px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(44, 37, 32, 0.92);
+            backdrop-filter: blur(8px);
+            padding: 8px 22px;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .nav-btn {
+            color: #E5D5C3;
+            background: transparent;
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+        }
+        .nav-btn:hover {
+            background: #8C6E54;
+            color: #ffffff;
+        }
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            min-width: 75px;
+            text-align: center;
+        }
+
+        /* Slide Transition Effects */
+        .slide-step {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+            height: 100%;
+        }
+        .slide-step.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            opacity: 1;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 768px) {
+            .slide-content-area {
+                top: 5%;
+                bottom: 5%;
+                left: 4%;
+                right: 4%;
+                padding: 18px 20px;
+            }
+            .slide-title {
+                font-size: 1.3rem;
+            }
+            .code-container {
+                font-size: 0.75rem;
+                padding: 10px;
+            }
+            .nav-toolbar {
+                bottom: 10px;
+                padding: 6px 14px;
+            }
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        @media print {
+            html, body {
+                background: #E5D5C3 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 100%;
+            }
+            .presentation-wrapper {
+                width: 100% !important;
+                height: auto !important;
+                max-width: none !important;
+                max-height: none !important;
+                padding: 0 !important;
+            }
+            .nav-toolbar, .copy-btn {
+                display: none !important;
+            }
+            .slide-frame {
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            .frame-background-svg {
+                position: fixed !important;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 0;
+            }
+            .slide-content-area {
+                position: static !important;
+                padding: 0 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+            .slide-step {
+                display: flex !important;
+                opacity: 1 !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                height: 100vh !important;
+                width: 100vw !important;
+                box-sizing: border-box !important;
+                padding: 30px 45px !important;
+                position: relative !important;
+                z-index: 2;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="presentation-wrapper">
+        <div class="slide-frame">
+            
+            <!-- SVG Background Frame (Matching Beige/Sand Theme) -->
+            <svg class="frame-background-svg" viewBox="0 0 1280 720" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <radialGradient id="sandGlow" cx="50%" cy="50%" r="70%">
+                        <stop offset="0%" stop-color="#F7F0E6"/>
+                        <stop offset="100%" stop-color="#E2D0BA"/>
+                    </radialGradient>
+                    <linearGradient id="blobGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#A28369"/>
+                        <stop offset="100%" stop-color="#73563F"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Base Canvas Background -->
+                <rect width="1280" height="720" fill="url(#sandGlow)" />
+
+                <!-- Sand Waves SVG Lines -->
+                <path d="M -50,150 Q 300,80 650,180 T 1350,120" fill="none" stroke="#D8C3A9" stroke-width="2" opacity="0.6"/>
+                <path d="M -50,380 Q 400,450 850,350 T 1350,420" fill="none" stroke="#D8C3A9" stroke-width="2.5" opacity="0.5"/>
+                <path d="M -50,580 Q 350,500 750,620 T 1350,550" fill="none" stroke="#D8C3A9" stroke-width="2" opacity="0.6"/>
+
+                <!-- TOP-LEFT DECORATION -->
+                <g id="top-left-decor">
+                    <path d="M -10,300 C 60,260 140,240 180,180 C 230,110 210,30 250,-10" fill="none" stroke="#5C4331" stroke-width="3" opacity="0.85"/>
+                    <path d="M -10,260 C 50,230 110,210 150,150 C 190,90 180,20 210,-10" fill="none" stroke="#5C4331" stroke-width="2.5" opacity="0.8"/>
+                    <path d="M -10,220 C 40,190 90,170 120,120 C 150,70 140,10 170,-10" fill="none" stroke="#5C4331" stroke-width="2" opacity="0.75"/>
+                    <path d="M -20,-20 L 220,-20 C 210,50 180,110 130,150 C 70,200 -20,180 -20,180 Z" fill="#6A503B" opacity="0.25"/>
+                    <path d="M -20,-20 L 200,-20 C 180,40 160,90 110,130 C 60,170 -20,150 -20,150 Z" fill="url(#blobGrad)"/>
+                    <path d="M -20,-20 L 130,-20 C 110,20 100,50 60,80 C 20,110 -20,90 -20,90 Z" fill="#BFA38A" opacity="0.6"/>
+                </g>
+
+                <!-- BOTTOM-RIGHT DECORATION -->
+                <g id="bottom-right-decor">
+                    <path d="M 1290,420 C 1220,460 1140,480 1100,540 C 1050,610 1070,690 1030,730" fill="none" stroke="#5C4331" stroke-width="3" opacity="0.85"/>
+                    <path d="M 1290,460 C 1230,490 1170,510 1130,570 C 1090,630 1100,700 1070,730" fill="none" stroke="#5C4331" stroke-width="2.5" opacity="0.8"/>
+                    <path d="M 1290,500 C 1240,530 1190,550 1160,600 C 1130,650 1140,710 1110,730" fill="none" stroke="#5C4331" stroke-width="2" opacity="0.75"/>
+                    <path d="M 1300,740 L 1060,740 C 1080,670 1110,610 1160,570 C 1220,520 1300,540 1300,540 Z" fill="url(#blobGrad)"/>
+                    <path d="M 1300,740 L 1150,740 C 1170,700 1180,660 1220,630 C 1260,600 1300,620 1300,620 Z" fill="#BFA38A" opacity="0.5"/>
+                </g>
+            </svg>
+
+            <!-- White Inner Presentation Canvas -->
+            <div class="slide-content-area" id="slideArea">
+                
+                <!-- SLIDE 1: Title Slide -->
+                <div class="slide-step active" data-slide="1">
+                    <div class="flex flex-col items-center justify-center text-center h-full my-auto">
+                        <div class="inline-block bg-[#F4ECE1] text-[#73563F] font-bold px-4 py-1.5 rounded-full text-sm mb-4 border border-[#D4B996]">
+                            <i class="fa-solid fa-database ml-2"></i> هياكل البيانات والبرمجة المتقدمة | Java Data Structures
+                        </div>
+                        <h1 class="text-3xl md:text-5xl font-extrabold text-[#4A3525] leading-tight mb-4">
+                            إطار عمل المجموعات في Java
+                        </h1>
+                        <h2 class="text-xl md:text-2xl font-semibold text-[#8C6E54] mb-6">
+                            Java Collections Framework (JCF) Masterclass
+                        </h2>
+                        <div class="w-24 h-1.5 bg-[#8C6E54] rounded-full mb-8"></div>
+                        <p class="text-gray-650 max-w-2xl text-base md:text-lg leading-relaxed">
+                            دليل هندسي شامـل يشرح كافة هياكل المجموعات (List, Set, Map, Queue)، الفروق الجوهرية، الأداء، والتطبيق العملي بأمثلة كود جاهزة بالتنفيذ في <b>Java</b>.
+                        </p>
+                        <div class="mt-8 flex items-center gap-3 text-sm text-gray-500 bg-[#FAF7F2] px-5 py-2.5 rounded-xl border border-gray-200">
+                            <i class="fa-solid fa-user-gear text-[#8C6E54]"></i>
+                            <span>إعداد وتقديم: <b>Software Engineer</b></span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>Java 17+ Standard Edition</span>
+                        <span>شريحة 1 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 2: What is JCF & Architecture -->
+                <div class="slide-step" data-slide="2">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-sitemap text-[#8C6E54]"></i>
+                            <span>1. ما هو Java Collections Framework (JCF)؟</span>
+                        </div>
+                        <p class="text-gray-700 text-sm md:text-base leading-relaxed mb-3">
+                            هو إطار عمل موحّد يوفر واجهات (Interfaces) وفئات (Classes) تتيح للمطورين تخزين وإدارة المجموعات من الكائنات بكفاءة، بدلاً من التعامل المباشر مع المصفوفات العادية (Arrays) ذات الحجم الثابت.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 my-2">
+                            <div class="feature-card">
+                                <h4 class="font-bold text-[#4A3525] text-sm mb-1">
+                                    <i class="fa-solid fa-diagram-project text-[#8C6E54] ml-2"></i>تسلسل Collection الأساسي
+                                </h4>
+                                <p class="text-xs text-gray-650">
+                                    يبدأ من الواجهة <code>Iterable</code> ثم <code>Collection</code> والتي يتفرع منها ثلاث واجهات رئيسية: <code>List</code> و <code>Set</code> و <code>Queue</code>.
+                                </p>
+                            </div>
+
+                            <div class="feature-card">
+                                <h4 class="font-bold text-[#4A3525] text-sm mb-1">
+                                    <i class="fa-solid fa-key text-[#8C6E54] ml-2"></i>تسلسل Map المستقل
+                                </h4>
+                                <p class="text-xs text-gray-650">
+                                    تعتبر الواجهة <code>Map&lt;K,V&gt;</code> شجرة مستقلة ولا ترث من <code>Collection</code> لأنها تعتمد على تخزين الأزواج (Key-Value) وليس العناصر المنفردة.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#FAF6F0] p-3.5 rounded-xl border border-[#E5D5C3]">
+                            <h4 class="font-bold text-xs md:text-sm text-[#73563F] mb-1.5"><i class="fa-solid fa-circle-info ml-1"></i> لماذا نستخدم Collections بدلاً من المصفوفات العادية (Arrays)؟</h4>
+                            <ul class="list-disc list-inside text-xs md:text-sm text-gray-700 space-y-1">
+                                <li><b>الحجم الديناميكي:</b> تتمدد وتتقلص المجموعات تلقائياً في الذاكرة.</li>
+                                <li><b>خوارزميات جاهزة:</b> توفر خوارزميات للفرز (Sorting)، البحث (Searching)، والتقليب (Shuffling).</li>
+                                <li><b>الأمان والكفاءة:</b> توفر دعم البرمجة المعممة (Generics) والأمان ضد أخطاء الذاكرة.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>هيكلية الـ Framework</span>
+                        <span>شريحة 2 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 3: List Interface (ArrayList vs LinkedList vs Vector) -->
+                <div class="slide-step" data-slide="3">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-list-ol text-[#8C6E54]"></i>
+                            <span>2. واجهة القوائم (List Interface)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            تسمح بتخزين عناصر مكررة وتحافظ على <b>ترتيب الإدخال (Insertion Order)</b> ويمكن الوصول للعناصر بالـ Index:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.<span class="dt">ArrayList</span>;
+<span class="kw">import</span> java.util.<span class="dt">LinkedList</span>;
+<span class="kw">import</span> java.util.<span class="dt">List</span>;
+
+<span class="kw">public class</span> <span class="dt">ListDemo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="cm">// ArrayList: مصفوفة ديناميكية متصلة (سريعة في القراءة O(1))</span>
+        <span class="dt">List</span>&lt;<span class="dt">String</span>&gt; names = <span class="kw">new</span> <span class="dt">ArrayList</span>&lt;&gt;();
+        names.<span class="fn">add</span>(<span class="st">"أحمد"</span>);
+        names.<span class="fn">add</span>(<span class="st">"سارة"</span>);
+        names.<span class="fn">add</span>(<span class="st">"أحمد"</span>); <span class="cm">// تكرار مسموح</span>
+
+        <span class="cm">// LinkedList: قائمة مرتبطة دوالياً (سريعة في الإضافة والتحذيف في المنتصف O(1))</span>
+        <span class="dt">LinkedList</span>&lt;<span class="dt">Integer</span>&gt; numbers = <span class="kw">new</span> <span class="dt">LinkedList</span>&lt;&gt;();
+        numbers.<span class="fn">addFirst</span>(<span class="nm">10</span>);
+        numbers.<span class="fn">addLast</span>(<span class="nm">20</span>);
+
+        <span class="dt">System</span>.out.println(<span class="st">"الاسم الأول: "</span> + names.<span class="fn">get</span>(<span class="nm">0</span>)); <span class="cm">// إخراج: أحمد</span>
+    }
+}</code></pre>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs mt-2">
+                            <div class="p-2 bg-[#FDFBF7] rounded border border-[#EAE1D3]"><b>ArrayList:</b> الأفضل للقرارات المتكررة والبحث.</div>
+                            <div class="p-2 bg-[#FDFBF7] rounded border border-[#EAE1D3]"><b>LinkedList:</b> الأفضل للإضافة والحذف المستمر.</div>
+                            <div class="p-2 bg-[#FDFBF7] rounded border border-[#EAE1D3]"><b>Vector:</b> خيار آمن برمجياً (Thread-Safe) ولكنه أبطأ.</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>قوائم البيانات المتسلسلة</span>
+                        <span>شريحة 3 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 4: Set Interface (HashSet, LinkedHashSet, TreeSet) -->
+                <div class="slide-step" data-slide="4">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-[#8C6E54] fa-filter text-[#8C6E54]"></i>
+                            <span>3. واجهة المجموعات الفريدة (Set Interface)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            تُستخدم لتخزين عناصر <b>فريدة فقط (لا تسمح بالتكرار)</b>، وتضم 3 تطبيقات رئيسية:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="dt">SetDemo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="cm">// 1. HashSet: أسرع أداء O(1) ولكن الترتيب عشوائي</span>
+        <span class="dt">Set</span>&lt;<span class="dt">String</span>&gt; hashSet = <span class="kw">new</span> <span class="dt">HashSet</span>&lt;&gt;();
+        hashSet.<span class="fn">add</span>(<span class="st">"تفاح"</span>); hashSet.<span class="fn">add</span>(<span class="st">"موز"</span>); hashSet.<span class="fn">add</span>(<span class="st">"تفاح"</span>); <span class="cm">// سيتم العزل تلقائياً</span>
+
+        <span class="cm">// 2. LinkedHashSet: يحافظ على ترتيب الإدخال</span>
+        <span class="dt">Set</span>&lt;<span class="dt">String</span>&gt; linkedSet = <span class="kw">new</span> <span class="dt">LinkedHashSet</span>&lt;&gt;();
+        linkedSet.<span class="fn">add</span>(<span class="st">"الأول"</span>); linkedSet.<span class="fn">add</span>(<span class="st">"الثاني"</span>);
+
+        <span class="cm">// 3. TreeSet: يرتب العناصر أبجدياً أو رقمياً تلقائياً O(log n)</span>
+        <span class="dt">Set</span>&lt;<span class="dt">Integer</span>&gt; treeSet = <span class="kw">new</span> <span class="dt">TreeSet</span>&lt;&gt;();
+        treeSet.<span class="fn">addAll</span>(<span class="dt">Arrays</span>.<span class="fn">asList</span>(<span class="nm">45</span>, <span class="nm">12</span>, <span class="nm">89</span>, <span class="nm">3</span>));
+        <span class="dt">System</span>.out.println(treeSet); <span class="cm">// المخرجات المرتبة: [3, 12, 45, 89]</span>
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>منع التكرار والتنظيم</span>
+                        <span>شريحة 4 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 5: Map Interface (HashMap, LinkedHashMap, TreeMap) -->
+                <div class="slide-step" data-slide="5">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-map text-[#8C6E54]"></i>
+                            <span>4. خرائط المفاتيح والقيم (Map Interface)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            تُخزن البيانات على شكل أزواج <b>(Key &rarr; Value)</b>. المفاتيح فريدة دائماً، بينما القيم يمكن تكرارها:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="dt">MapDemo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="cm">// HashMap: بحث سريع جداً بقيمة المفتاح Hash Code</span>
+        <span class="dt">Map</span>&lt;<span class="dt">String</span>, <span class="dt">Double</span>&gt; salaries = <span class="kw">new</span> <span class="dt">HashMap</span>&lt;&gt;();
+        salaries.<span class="fn">put</span>(<span class="st">"أحمد"</span>, <span class="nm">15000.0</span>);
+        salaries.<span class="fn">put</span>(<span class="st">"منى"</span>, <span class="nm">18500.0</span>);
+        salaries.<span class="fn">put</span>(<span class="st">"أحمد"</span>, <span class="nm">16000.0</span>); <span class="cm">// يوزع القيمة الجديدة فوق القديمة</span>
+
+        <span class="cm">// قراءة البيانات</span>
+        <span class="dt">System</span>.out.println(<span class="st">"راتب أحمد: "</span> + salaries.<span class="fn">get</span>(<span class="st">"أحمد"</span>));
+
+        <span class="cm">// المرور على مفاتيح وقيم الـ Map</span>
+        <span class="kw">for</span> (<span class="dt">Map</span>.<span class="dt">Entry</span>&lt;<span class="dt">String</span>, <span class="dt">Double</span>&gt; entry : salaries.<span class="fn">entrySet</span>()) {
+            <span class="dt">System</span>.out.println(entry.<span class="fn">getKey</span>() + <span class="st">" : "</span> + entry.<span class="fn">getValue</span>());
+        }
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>ربط المفاتيح بالقيم (Key-Value Pairs)</span>
+                        <span>شريحة 5 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 6: Queue & Deque Interface -->
+                <div class="slide-step" data-slide="6">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-bars-staggered text-[#8C6E54]"></i>
+                            <span>5. الطوابور والصفوف (Queue & Deque Interface)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            تُستخدم لإدارة البيانات التي تُعالج بترتيب معين مثل <b>FIFO (First In First Out)</b> أو حسب الأولوية:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="dt">QueueDemo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="cm">// 1. PriorityQueue: معالجة العناصر حسب الأولوية الصغرى أو الكبرى</span>
+        <span class="dt">Queue</span>&lt;<span class="dt">Integer</span>&gt; pQueue = <span class="kw">new</span> <span class="dt">PriorityQueue</span>&lt;&gt;();
+        pQueue.<span class="fn">offer</span>(<span class="nm">30</span>); pQueue.<span class="fn">offer</span>(<span class="nm">10</span>); pQueue.<span class="fn">offer</span>(<span class="nm">20</span>);
+        <span class="dt">System</span>.out.println(pQueue.<span class="fn">poll</span>()); <span class="cm">// يخرج العنصر الأصغر: 10</span>
+
+        <span class="cm">// 2. ArrayDeque: طابور مزدوج الطرفين (Double-Ended Queue) يتيح العمل كـ Stack أو Queue</span>
+        <span class="dt">Deque</span>&lt;<span class="dt">String</span>&gt; deque = <span class="kw">new</span> <span class="dt">ArrayDeque</span>&lt;&gt;();
+        deque.<span class="fn">addFirst</span>(<span class="st">"العنصر 1"</span>);
+        deque.<span class="fn">addLast</span>(<span class="st">"العنصر 2"</span>);
+        deque.<span class="fn">removeFirst</span>();
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>طوابير المعالجة والتنفيذ</span>
+                        <span>شريحة 6 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 7: Iteration Mechanisms & Stream API -->
+                <div class="slide-step" data-slide="7">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-repeat text-[#8C6E54]"></i>
+                            <span>6. طرق التكرار والمرور (Iteration Mechanisms)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            تتيح Java طرقاً متعددة للتنقل داخل المجموعات بأمان وتجنب استثناء <code>ConcurrentModificationException</code>:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="dt">IterationDemo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="dt">List</span>&lt;<span class="dt">String</span>&gt; list = <span class="dt">Arrays</span>.<span class="fn">asList</span>(<span class="st">"Java"</span>, <span class="st">"Python"</span>, <span class="st">"C++"</span>);
+
+        <span class="cm">// 1. استخدام Iterator الآمن للتعديل والحذف أثناء التكرار</span>
+        <span class="dt">Iterator</span>&lt;<span class="dt">String</span>&gt; it = list.<span class="fn">iterator</span>();
+        <span class="kw">while</span> (it.<span class="fn">hasNext</span>()) {
+            <span class="dt">String</span> lang = it.<span class="fn">next</span>();
+            <span class="kw">if</span> (lang.<span class="fn">equals</span>(<span class="st">"C++"</span>)) it.<span class="fn">remove</span>();
+        }
+
+        <span class="cm">// 2. Java 8+ Stream API للفلترة والعمليات المتقدمة</span>
+        list.<span class="fn">stream</span>()
+            .<span class="fn">filter</span>(s -&gt; s.<span class="fn">startsWith</span>(<span class="st">"J"</span>))
+            .<span class="fn">forEach</span>(<span class="dt">System</span>.out::<span class="fn">println</span>);
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>التنقل والمرور في المجموعات</span>
+                        <span>شريحة 7 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 8: Comparable vs Comparator -->
+                <div class="slide-step" data-slide="8">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-arrow-down-a-z text-[#8C6E54]"></i>
+                            <span>7. فرز الكائنات المخصصة (Comparable vs Comparator)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            لفرز كائنات معقدة (Custom Objects)، نستخدم إما الترتيب الطبيعي عبر <code>Comparable</code> أو الترتيب المخصص عبر <code>Comparator</code>:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">class</span> <span class="dt">Product</span> {
+    <span class="dt">String</span> name; <span class="dt">double</span> price;
+    <span class="kw">public</span> <span class="fn">Product</span>(<span class="dt">String</span> name, <span class="dt">double</span> price) { <span class="kw">this</span>.name = name; <span class="kw">this</span>.price = price; }
+}
+
+<span class="kw">public class</span> <span class="dt">SortDemo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="dt">List</span>&lt;<span class="dt">Product</span>&gt; products = <span class="dt">Arrays</span>.<span class="fn">asList</span>(
+            <span class="kw">new</span> <span class="dt">Product</span>(<span class="st">"Laptop"</span>, <span class="nm">1200.0</span>), <span class="kw">new</span> <span class="dt">Product</span>(<span class="st">"Mouse"</span>, <span class="nm">25.0</span>)
+        );
+
+        <span class="cm">// الفرز حسب السعر باستخدام Comparator و Lambda</span>
+        products.<span class="fn">sort</span>(<span class="dt">Comparator</span>.<span class="fn">comparingDouble</span>(p -&gt; p.price));
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>معايير الخوارزميات والفرز</span>
+                        <span>شريحة 8 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 9: Generics & Wildcards in Collections -->
+                <div class="slide-step" data-slide="9">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-[#8C6E54] fa-shield-halved text-[#8C6E54]"></i>
+                            <span>8. البرمجة المعممة والرموز البديلة (Generics & Wildcards)</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-gray-700 mb-2">
+                            تضمن <code>Generics</code> الأمان البرمجي أثناء وقت التجميع (Compile-time Type Safety) وتمنع أخطاء التنوع:
+                        </p>
+
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>
+<pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="dt">GenericsDemo</span> {
+    <span class="cm">// Upper Bounded Wildcard: القراءة فقط لأي نوع يرث من Number</span>
+    <span class="kw">public static double</span> <span class="fn">sumOfList</span>(<span class="dt">List</span>&lt;? <span class="kw">extends</span> <span class="dt">Number</span>&gt; list) {
+        <span class="kw">double</span> sum = <span class="nm">0.0</span>;
+        <span class="kw">for</span> (<span class="dt">Number</span> n : list) sum += n.<span class="fn">doubleValue</span>();
+        <span class="kw">return</span> sum;
+    }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="dt">String</span>[] args) {
+        <span class="dt">List</span>&lt;<span class="dt">Integer</span>&gt; ints = <span class="dt">Arrays</span>.<span class="fn">asList</span>(<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>);
+        <span class="dt">System</span>.out.println(<span class="st">"المجموع: "</span> + <span class="fn">sumOfList</span>(ints));
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>أمان الذاكرة والأنواع البرمجية</span>
+                        <span>شريحة 9 من 10</span>
+                    </div>
+                </div>
+
+                <!-- SLIDE 10: Performance Cheat Sheet & Best Practices -->
+                <div class="slide-step" data-slide="10">
+                    <div>
+                        <div class="slide-title">
+                            <i class="fa-solid fa-gauge-high text-[#8C6E54]"></i>
+                            <span>9. جدول التعقيد الزمني (Big-O) والنصائح الإرشادية</span>
+                        </div>
+                        
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>هيكل البيانات</th>
+                                    <th>البحث (Search)</th>
+                                    <th>الإضافة (Insertion)</th>
+                                    <th>الحذف (Deletion)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><b>ArrayList</b></td>
+                                    <td>O(1) عبر Index</td>
+                                    <td>O(1) في النهاية</td>
+                                    <td>O(n) shift</td>
+                                </tr>
+                                <tr>
+                                    <td><b>LinkedList</b></td>
+                                    <td>O(n) مرور كامل</td>
+                                    <td>O(1) عند المؤشر</td>
+                                    <td>O(1) عند المؤشر</td>
+                                </tr>
+                                <tr>
+                                    <td><b>HashSet / HashMap</b></td>
+                                    <td>O(1) متوسط</td>
+                                    <td>O(1) متوسط</td>
+                                    <td>O(1) متوسط</td>
+                                </tr>
+                                <tr>
+                                    <td><b>TreeSet / TreeMap</b></td>
+                                    <td>O(log n)</td>
+                                    <td>O(log n)</td>
+                                    <td>O(log n)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="bg-[#73563F] text-white p-3.5 rounded-xl text-center mt-3 shadow-md">
+                            <h3 class="text-base font-bold mb-1">نصيحة مهندس البرمجيات 💡</h3>
+                            <p class="text-xs text-[#E5D5C3]">اختر `ArrayList` افتراضياً للقوائم، و `HashMap` للبحث بالمفاتيح، و `HashSet` للعناصر الفريدة إلا إذا دعت الحاجة لترتيب خاص!</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-auto">
+                        <span>نهاية العرض التقديمي</span>
+                        <span>شريحة 10 من 10</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Floating Interactive Navigation Bar -->
+        <div class="nav-toolbar">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" title="الشريحة السابقة">
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+
+            <span class="slide-counter" id="slideCounter">1 / 10</span>
+
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)" title="الشريحة التالية">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+
+            <div class="w-px h-5 bg-gray-600 mx-1"></div>
+
+            <button class="nav-btn" onclick="toggleFullscreen()" title="ملء الشاشة">
+                <i class="fa-solid fa-expand" id="fullscreenIcon"></i>
+            </button>
+
+            <button class="bg-[#8C6E54] hover:bg-[#6A503B] text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow ml-2" onclick="window.print()" title="تحميل العرض التقديمي كملف PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span>تصدير PDF</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 10;
+
+        function updateSlide() {
+            // Hide all slides
+            const slides = document.querySelectorAll('.slide-step');
+            slides.forEach(slide => slide.classList.remove('active'));
+
+            // Show current slide
+            const activeSlide = document.querySelector(`.slide-step[data-slide="${currentSlide}"]`);
+            if (activeSlide) {
+                activeSlide.classList.add('active');
+            }
+
+            // Update Counter
+            document.getElementById('slideCounter').innerText = `${currentSlide} / ${totalSlides}`;
+
+            // Update Buttons State
+            document.getElementById('prevBtn').disabled = (currentSlide === 1);
+            document.getElementById('nextBtn').disabled = (currentSlide === totalSlides);
+        }
+
+        function changeSlide(direction) {
+            const newSlide = currentSlide + direction;
+            if (newSlide >= 1 && newSlide <= totalSlides) {
+                currentSlide = newSlide;
+                updateSlide();
+            }
+        }
+
+        // Keyboard Navigation Support
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft' || event.key === 'Space' || event.key === 'PageDown') {
+                changeSlide(1); // Next slide in RTL
+            } else if (event.key === 'ArrowRight' || event.key === 'PageUp') {
+                changeSlide(-1); // Prev slide in RTL
+            }
+        });
+
+        // Touch Swipe Navigation for Mobile
+        let touchstartX = 0;
+        let touchendX = 0;
+
+        const slideContainer = document.querySelector('.slide-frame');
+        slideContainer.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+        });
+
+        slideContainer.addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchendX < touchstartX - 50) {
+                changeSlide(1); // Swipe Left -> Next
+            }
+            if (touchendX > touchstartX + 50) {
+                changeSlide(-1); // Swipe Right -> Prev
+            }
+        }
+
+        // Copy Code Snippet Function
+        function copyCode(button) {
+            const codeBlock = button.parentElement.querySelector('code');
+            const textToCopy = codeBlock.innerText;
+
+            const tempInput = document.createElement('textarea');
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            button.innerHTML = '<i class="fa-solid fa-check text-green-400"></i> تم النسخ!';
+            setTimeout(() => {
+                button.innerHTML = '<i class="fa-regular fa-copy"></i> نسخ';
+            }, 2000);
+        }
+
+        // Fullscreen Toggle
+        function toggleFullscreen() {
+            const elem = document.documentElement;
+            const icon = document.getElementById('fullscreenIcon');
+
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                }
+                icon.classList.remove('fa-expand');
+                icon.classList.add('fa-compress');
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+                icon.classList.remove('fa-compress');
+                icon.classList.add('fa-expand');
+            }
+        }
+
+        // Initialize presentation on load
+        window.onload = function() {
+            updateSlide();
+        };
+    </script>
+</body>
+</html>
