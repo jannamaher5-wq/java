@@ -26,3 +26,4 @@ public class ThrowsKeyword {
         }
     }
 }
+كلمة throws جنب اسم الميثود معناها الميثود دي ممكن ترمي إيرور فاللي هيناديها يعمل try-catch بنفسه  
