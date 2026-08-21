@@ -19,3 +19,5 @@ public class ConvertStringToInteger {
         input.close();
     }
 }
+مينفعش تحوّل نص زي "ahmed" لرقم لأن Integer.parseInt() مستنيانى اديها رقم
+    لما يدخل نص غلط بترمي NumberFormatException
