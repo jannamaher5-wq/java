@@ -19,3 +19,5 @@ public class AccessArrayElement {
         input.close();
     }
 }
+لأراي ليها حدود محددة Indexes لو الأراي حجمها 5 وطلبت العنصر رقم 10، الجافا هترمي ArrayIndexOutOfBoundsException. 
+    فهمت إزاي أمنع البرنامج يضرب لو اليوزر طلب مكان مش موجود في الذاكرة.
