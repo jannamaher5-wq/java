@@ -22,3 +22,6 @@ public class DivideTwoNumbers {
         input.close();
     }
 }
+الكمبيوتر لو قسمنا على صفر هيرميلى ArithmeticException 
+    فايدة الـ try-catch هنا إن البرنامج ميفصلش في وش المستخدم فجأة Crash
+    ويطلع للمستخدم رساله توضحله انو ينفعش نقسم على صفر
