@@ -34,3 +34,8 @@ public class CreateCustomException {
         input.close();
     }
 }
+انا مش مجبر أعتمد بس على إيرورز الجافا الجاهزة أقدر اعمل الإيرور بتاعي
+(InvalidAgeException) عشان يخدم قواعد البزنس بتاعتي (زي: السن أقل من 18 سنة ممنوع يدخل
+
+
+    
