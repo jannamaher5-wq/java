@@ -1,0 +1,56 @@
+Ex1:
+output
+[Student{id=1, name='ahmed'}, Student{id=2, name='osama'}, Student{id=3, name='ali'}]
+الشرح
+ الترتيب ف ال Hashset غير مضمون يعنى التلت عناصر هيكونو موجودين بس الترتيب ممكن يختلف 
+لما ضفنا Student1,Ahmed لأول مره تمام بس لما ضفنا نفس ال input تانى ال Hashset لاقت ال Hashcode متكرر فمضافوش تانى نفس الموضوع مع 2 ,osama
+
+Ex2:
+output
+true
+true
+false
+الشرح
+ال set فيها 1,ahmed  و 2,osama 
+Student.contains(student1)و student1 فيه 1 هندور عليه ف ال set هنلاقى البيانات متطابقه فيرجعلنا true,ahmed 
+Student.contains(student2)و student2 فيه 2 هندور عليه ف ال set هنلاقى البيانات متطابقه فيرجعلنا true,osama
+Student.contains(student3)و student3 فيه 3 هندور عليه ف ال set هنلاقى البيانات غير متطابقه يعنى ال 1تمام بس في اختلاف ف الاسم فيرجعلنا false,ali
+
+Ex3:
+output
+true
+true
+false
+true
+true
+false
+الشرح
+الـ HashMap متخزن فيه عنصرين بنظام مفتاح وقيمة:
+
+المفتاح (1, "ahmed") والقيمة (1, "ahmed")
+
+المفتاح (2, "osama") والقيمة (2, "osama")
+
+عندنا 3 طلاب بنسأل عنهم: student1 هو أحمد، student2 هو أسامة، و student3 هو علي.
+
+1. containsKey (البحث في المفاتيح):
+student1 (أحمد): موجود كـ مفتاح فتطبع true
+
+student2 (أسامة): موجود كـ مفتاح فتطبع true
+
+student3 (علي): مش موجود كـ مفتاح فتطبع false
+
+2. containsValue (البحث في القيم):
+student1 (أحمد): موجود كـ قيمة فتطبع true
+
+student2 (أسامة): موجود كـ قيمة فتطبع true
+
+student3 (علي): مش موجود كـ قيمة فتطبع false
+
+لو كلاس Student مافيهوش دالتين equals() و hashCode() (يعني متمش عمل override ليهم وبيعتمد على التطبيق الافتراضي من كلاس Object):
+
+في EX1: هيضيف الـ 5 عناصر كلهم! لأن جافا هنا هتشوف كل كلمة new Student(...) كأنها كائن جديد ومستقل تمامًا في الذاكرة حتى لو نفس البيانات، ويبقى حجم الـ HashSet يساوي 5.
+
+في EX2: النتيجة هتبقى false, false, false لأن المقارنة ساعتها هتبقى على مكان الكائن في الذاكرة (reference) مش على البيانات اللي جواه.
+
+في EX3: كل النتائج هتبقى false لنفس السبب بالضبط.
