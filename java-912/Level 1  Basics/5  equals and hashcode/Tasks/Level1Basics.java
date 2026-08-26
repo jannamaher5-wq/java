@@ -1,4 +1,4 @@
-
+//ال notes هنا مكتوبه على شكل comments موجوده ف الكود مش ف اخره 
 public class Level1Basics {
     static class Person {
         int id;
