@@ -3,8 +3,7 @@ import java.util.Scanner;
 
 /**
  * Main Class
- * Entry point for the Application Console User Interface (UI).
- * Handles menu navigation, user sessions, inputs, and error handlers.
+ * Console UI Layer supporting authentication menus, account operations, and error management.
  */
 public class Main {
     private static WalletService walletService = new WalletServiceImpl();
@@ -67,32 +66,20 @@ public class Main {
 
     private static void handleLogin() {
         System.out.println("\n--- USER LOGIN ---");
-        int maxAttempts = 3;
-        int attempts = 0;
+        System.out.print("Username: ");
+        String username = scanner.next();
 
-        while (attempts < maxAttempts) {
-            System.out.print("Username: ");
-            String username = scanner.next();
+        System.out.print("Password: ");
+        String password = scanner.next();
 
-            System.out.print("Password: ");
-            String password = scanner.next();
-
-            try {
-                boolean loggedIn = walletService.login(username, password);
-                if (loggedIn) {
-                    System.out.println("✅ Login successful!");
-                    handleUserMenu();
-                    return;
-                }
-            } catch (Exception e) {
-                attempts++;
-                System.out.println("❌ " + e.getMessage());
-                if (attempts < maxAttempts) {
-                    System.out.println("⚠️ Remaining authentication attempts: " + (maxAttempts - attempts));
-                } else {
-                    System.out.println("🔒 Maximum login attempts exceeded! Returning to Main Menu.");
-                }
+        try {
+            boolean loggedIn = walletService.login(username, password);
+            if (loggedIn) {
+                System.out.println("✅ Login successful!");
+                handleUserMenu();
             }
+        } catch (Exception e) {
+            System.out.println("❌ " + e.getMessage());
         }
     }
 
@@ -102,7 +89,7 @@ public class Main {
             System.out.println("\n=== BANKING SERVICES MENU (Logged in: " + user.getUsername() + ") ===");
             System.out.println("1. Deposit");
             System.out.println("2. Withdraw");
-            System.out.println("3. Transfer Funds (with OTP)");
+            System.out.println("3. Transfer Funds (with Secured OTP)");
             System.out.println("4. Show Account Balance & Details");
             System.out.println("5. Change Password");
 
@@ -165,16 +152,11 @@ public class Main {
         String toUser = scanner.next();
         double amount = readDoubleInput("Enter transfer amount: ");
 
-        int generatedOTP = SecurityUtils.generateOTP();
-        System.out.println("\n📲 [Simulated SMS Service] Your Verification OTP is: " + generatedOTP);
+        OtpSession otpSession = walletService.generateOtpForTransfer();
+        System.out.println("\n📲 [Simulated SMS Service] Your Verification OTP is: " + otpSession.getCode() + " (Valid for 60 seconds)");
         int userOTP = readIntInput("Enter OTP code to confirm transfer: ");
 
-        if (userOTP != generatedOTP) {
-            System.out.println("❌ Invalid OTP code! Transfer cancelled.");
-            return;
-        }
-
-        walletService.transfer(toUser, amount);
+        walletService.transfer(toUser, amount, userOTP, otpSession);
         System.out.println("✅ Transfer of " + amount + " EGP to " + toUser + " completed successfully!");
         System.out.println("💰 Current Balance: " + walletService.getLoggedInUser().getBalance() + " EGP");
     }
@@ -182,10 +164,10 @@ public class Main {
     private static void showAccountDetails(Account acc) {
         System.out.println("\n--- ACCOUNT DETAILS ---");
         System.out.println("Username: " + acc.getUsername());
-        System.out.println("Phone Number: " + acc.getPhoneNumber());
+        System.out.println("Phone Number: " + SecurityUtils.maskPhoneNumber(acc.getPhoneNumber()));
         System.out.println("Age: " + acc.getAge());
         System.out.println("Current Balance: " + acc.getBalance() + " EGP");
-        System.out.println("Password Status: ********* (Hashed & Encrypted)");
+        System.out.println("Security Hash Status: " + acc.getPasswordHash().substring(0, 10) + "... (SHA-256 + Salt)");
         System.out.println("Account Type: " + (acc.isAdmin() ? "Administrator" : "Standard User"));
     }
 
@@ -194,9 +176,9 @@ public class Main {
         System.out.println("\n--- REGISTERED ACCOUNTS DATABASE ---");
         list.stream().forEach(acc ->
                 System.out.println("- User: " + acc.getUsername() +
-                        " | Phone: " + acc.getPhoneNumber() +
+                        " | Phone: " + SecurityUtils.maskPhoneNumber(acc.getPhoneNumber()) +
                         " | Balance: " + acc.getBalance() +
-                        " EGP | Status: " + (acc.isActive() ? "ACTIVE" : "FROZEN"))
+                        " EGP | Status: " + (acc.isActive() ? "ACTIVE" : "LOCKED/FROZEN"))
         );
     }
 
@@ -226,7 +208,7 @@ public class Main {
                 System.out.print(prompt);
                 return Double.parseDouble(scanner.next());
             } catch (NumberFormatException e) {
-                System.out.println("❌ Invalid input! Please enter a valid numerical amount (e.g. 150.75).");
+                System.out.println("❌ Invalid input! Please enter a valid numerical amount (e.g., 150.75).");
             }
         }
     }
