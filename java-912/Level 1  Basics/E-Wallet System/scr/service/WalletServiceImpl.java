@@ -1,235 +1,256 @@
 package service;
 
 import model.Account;
+import model.Transaction;
 import util.OtpSession;
 import util.SecurityUtils;
 import util.ValidationUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import model.Account;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 /**
- * service.WalletServiceImpl Class
- * Core Business Logic implementing account policies, fraud detection, and transaction security.
+ * Core business implementation handling system security, transaction limits, and account lifecycle.
  */
 public class WalletServiceImpl implements WalletService {
-    private List<Account> accounts;
+    private final List<Account> accounts;
     private Account loggedInUser;
 
     public static final double MIN_TRANSACTION = 10.0;
     public static final double MAX_TRANSACTION = 50000.0;
     public static final double DAILY_LIMIT = 100000.0;
 
+    /**
+     * Initializes service storage and setups default administrator account.
+     */
     public WalletServiceImpl() {
         this.accounts = new ArrayList<>();
         this.loggedInUser = null;
 
-        // Admin model.Account Creation
-        Account admin = new Account("IAM", "IAM123", 30, "01000000000", true);
-        accounts.add(admin);
+        // Auto-creates default system Administrator
+        accounts.add(new Account("IAM", "IAM123", 30, "01000000000", true));
     }
 
+    /**
+     * Registers a new account after validating inputs and preventing duplicate records.
+     */
     @Override
     public boolean register(String username, String rawPassword, int age, String phone) throws Exception {
-        if (!ValidationUtils.isValidUsername(username)) {
-            throw new Exception("Invalid username! Must start with an uppercase letter and be at least 3 characters long.");
-        }
-        if (!ValidationUtils.isValidPassword(rawPassword)) {
-            throw new Exception("Weak password! Must contain at least one uppercase letter, one digit, and be at least 6 characters.");
-        }
-        if (!ValidationUtils.isValidAge(age)) {
-            throw new Exception("Age constraint violation! User must be 18 years or older.");
-        }
-        if (!ValidationUtils.isValidEgyptianPhone(phone)) {
-            throw new Exception("Invalid phone number! Must be a valid 11-digit Egyptian phone number.");
-        }
-
-        boolean exists = accounts.stream()
-                .anyMatch(acc -> acc.getUsername().equalsIgnoreCase(username) || acc.getPhoneNumber().equals(phone));
-
-        if (exists) {
-            throw new Exception("Registration conflict! Username or phone number already exists.");
-        }
+        validateRegistrationInputs(username, rawPassword, age, phone);
+        checkDuplicateUser(username, phone);
 
         Account newAccount = new Account(username, rawPassword, age, phone, false);
         accounts.add(newAccount);
         return true;
     }
 
+    /**
+     * Authenticates user credentials with account lockout protection on 3 failed attempts.
+     */
     @Override
     public boolean login(String username, String rawPassword) throws Exception {
-        if (username == null || username.trim().isEmpty() || rawPassword == null || rawPassword.trim().isEmpty()) {
-            throw new Exception("Login credentials cannot be empty.");
+        if (username == null || username.isBlank() || rawPassword == null || rawPassword.isBlank()) {
+            throw new Exception("Login inputs cannot be empty.");
         }
 
-        Optional<Account> userOpt = accounts.stream()
-                .filter(acc -> acc.getUsername().equalsIgnoreCase(username))
-                .findFirst();
-
-        if (userOpt.isEmpty()) {
-            throw new Exception("Authentication failed! Username not found.");
-        }
-
-        Account account = userOpt.get();
+        Account account = findAccountByUsername(username);
 
         if (!account.isActive()) {
-            throw new Exception("Access denied! model.Account is locked/frozen due to security policies or Admin action.");
+            throw new Exception("Access denied! Account is locked or frozen.");
         }
 
         String inputHash = SecurityUtils.hashPasswordWithSalt(rawPassword, account.getSalt());
 
         if (!account.getPasswordHash().equals(inputHash)) {
             account.incrementFailedAttempts();
-
-            // model.Account Lockout Policy
             if (account.getFailedLoginAttempts() >= 3) {
                 account.setActive(false);
-                throw new Exception("🚨 SECURITY AUDIT LOG: model.Account locked automatically due to 3 consecutive failed login attempts!");
+                account.addTransaction("LOCKOUT", 0, "Account locked after 3 failed login attempts.");
+                throw new Exception("🚨 Account locked automatically due to 3 failed login attempts!");
             }
-            throw new Exception("Authentication failed! Incorrect password. Failed attempts: " + account.getFailedLoginAttempts() + "/3");
+            throw new Exception("Incorrect password. Failed attempts: " + account.getFailedLoginAttempts() + "/3");
         }
 
         account.resetFailedAttempts();
+        account.addTransaction("LOGIN", 0, "Successful user authentication.");
         this.loggedInUser = account;
         return true;
     }
 
+    /**
+     * Deposits funds to active user account balance.
+     */
     @Override
     public void deposit(double amount) throws Exception {
         checkLoggedIn();
-        if (amount <= 0) {
-            throw new Exception("Deposit amount must be greater than 0.0.");
-        }
+        if (amount <= 0) throw new Exception("Deposit amount must be positive.");
+
         loggedInUser.setBalance(loggedInUser.getBalance() + amount);
+        loggedInUser.addTransaction("DEPOSIT", amount, "Funds deposited to balance.");
     }
 
+    /**
+     * Withdraws funds from active user balance ensuring sufficient credit.
+     */
     @Override
     public void withdraw(double amount) throws Exception {
         checkLoggedIn();
-        if (amount <= 0) {
-            throw new Exception("Withdrawal amount must be greater than 0.0.");
-        }
-        if (amount > loggedInUser.getBalance()) {
-            throw new Exception("Insufficient funds! Transaction exceeds available balance.");
-        }
+        if (amount <= 0) throw new Exception("Withdrawal amount must be positive.");
+        if (amount > loggedInUser.getBalance()) throw new Exception("Insufficient funds.");
+
         loggedInUser.setBalance(loggedInUser.getBalance() - amount);
+        loggedInUser.addTransaction("WITHDRAW", amount, "Funds withdrawn from balance.");
     }
 
+    /**
+     * Creates new OTP session for transaction verification.
+     */
     @Override
     public OtpSession generateOtpForTransfer() throws Exception {
         checkLoggedIn();
         return new OtpSession();
     }
 
+    /**
+     * Executes atomic peer-to-peer transfer with OTP verification and velocity checks.
+     */
     @Override
     public void transfer(String destinationUsername, double amount, int inputOtp, OtpSession otpSession) throws Exception {
         checkLoggedIn();
+        validateTransferLimits(destinationUsername, amount, inputOtp, otpSession);
 
-        if (otpSession == null || !otpSession.validate(inputOtp)) {
-            throw new Exception("Transfer failed! Invalid OTP code.");
-        }
+        Account receiver = findAccountByUsername(destinationUsername);
+        if (!receiver.isActive()) throw new Exception("Destination account is frozen.");
 
-        // Velocity Check: Rapid Transaction Detection (10-second window)
         long currentTime = System.currentTimeMillis();
-        if (currentTime - loggedInUser.getLastTransactionTime() < 10000) {
-            throw new Exception("🚨 SECURITY ALERT: Rapid transaction detected! Please wait 10 seconds between operations.");
-        }
-
-        if (destinationUsername.equalsIgnoreCase(loggedInUser.getUsername())) {
-            throw new Exception("Invalid transfer operation! Cannot transfer funds to self.");
-        }
-
-        if (amount < MIN_TRANSACTION || amount > MAX_TRANSACTION) {
-            throw new Exception("Transaction amount out of bounds! Range allowed: " + MIN_TRANSACTION + " to " + MAX_TRANSACTION + " EGP.");
-        }
-
-        if (loggedInUser.getDailyTransferredAmount() + amount > DAILY_LIMIT) {
-            throw new Exception("Daily transfer limit exceeded! Maximum allowed daily limit: " + DAILY_LIMIT + " EGP.");
-        }
-
-        if (amount > loggedInUser.getBalance()) {
-            throw new Exception("Insufficient balance to execute transfer.");
-        }
-
-        // Fraud Alert (Large Amount Warning)
-        if (amount >= loggedInUser.getBalance() * 0.8) {
-            System.out.println("⚠️ FRAUD ALERT: High-value transaction detected (Transfer exceeds 80% of current balance).");
-        }
-
-        Account receiver = accounts.stream()
-                .filter(acc -> acc.getUsername().equalsIgnoreCase(destinationUsername))
-                .findFirst()
-                .orElseThrow(() -> new Exception("Transfer destination account not found."));
-
-        if (!receiver.isActive()) {
-            throw new Exception("Destination account is frozen or inactive.");
-        }
 
         loggedInUser.setBalance(loggedInUser.getBalance() - amount);
         loggedInUser.addDailyTransfer(amount);
         loggedInUser.setLastTransactionTime(currentTime);
+        loggedInUser.addTransaction("TRANSFER_OUT", amount, "Transferred to user: " + destinationUsername);
 
         receiver.setBalance(receiver.getBalance() + amount);
+        receiver.addTransaction("TRANSFER_IN", amount, "Received from user: " + loggedInUser.getUsername());
     }
 
+    /**
+     * Updates password credentials ensuring complexity and non-matching old password.
+     */
     @Override
     public void changePassword(String oldRawPassword, String newRawPassword) throws Exception {
         checkLoggedIn();
-
         String oldHash = SecurityUtils.hashPasswordWithSalt(oldRawPassword, loggedInUser.getSalt());
-        if (!loggedInUser.getPasswordHash().equals(oldHash)) {
-            throw new Exception("Verification failed! Old password does not match.");
-        }
 
+        if (!loggedInUser.getPasswordHash().equals(oldHash)) {
+            throw new Exception("Old password verification failed.");
+        }
         if (!ValidationUtils.isValidPassword(newRawPassword)) {
-            throw new Exception("New password fails security policy requirements.");
+            throw new Exception("New password fails complexity requirements.");
         }
 
         String newHash = SecurityUtils.hashPasswordWithSalt(newRawPassword, loggedInUser.getSalt());
-        if (oldHash.equals(newHash)) {
-            throw new Exception("New password must be different from the previous password.");
-        }
+        if (oldHash.equals(newHash)) throw new Exception("New password must differ from current password.");
 
         loggedInUser.setPasswordHash(newHash);
+        loggedInUser.addTransaction("PASSWORD_CHANGE", 0, "Updated security credentials.");
     }
 
+    /**
+     * Retrieves all accounts registered in database (Admin restricted).
+     */
     @Override
     public List<Account> getAllAccounts() throws Exception {
         checkAdmin();
         return accounts;
     }
 
+    /**
+     * Changes target account status between active and frozen (Admin restricted).
+     */
     @Override
     public void toggleAccountStatus(String username, boolean active) throws Exception {
         checkAdmin();
-        Account acc = accounts.stream()
-                .filter(a -> a.getUsername().equalsIgnoreCase(username))
-                .findFirst()
-                .orElseThrow(() -> new Exception("Target account not found."));
+        Account acc = findAccountByUsername(username);
         acc.setActive(active);
     }
 
+    /**
+     * Deletes user account record from system storage.
+     */
+    @Override
+    public void deleteAccount(String username) throws Exception {
+        checkLoggedIn();
+        if (!loggedInUser.isAdmin() && !loggedInUser.getUsername().equalsIgnoreCase(username)) {
+            throw new Exception("Unauthorized action to delete another account.");
+        }
+
+        Account accToDelete = findAccountByUsername(username);
+        accounts.remove(accToDelete);
+
+        if (loggedInUser.getUsername().equalsIgnoreCase(username)) {
+            logout();
+        }
+    }
+
+    /**
+     * Fetches transaction history log entries of logged-in user.
+     */
+    @Override
+    public List<Transaction> getMyTransactionHistory() throws Exception {
+        checkLoggedIn();
+        return loggedInUser.getTransactionHistory();
+    }
+
+    /**
+     * Terminates active session context.
+     */
     @Override
     public void logout() {
+        if (loggedInUser != null) {
+            loggedInUser.addTransaction("LOGOUT", 0, "User logged out.");
+        }
         this.loggedInUser = null;
     }
 
     @Override
     public Account getLoggedInUser() { return loggedInUser; }
 
+    // Helper Methods for Clean Code Architecture
+    private void validateRegistrationInputs(String username, String password, int age, String phone) throws Exception {
+        if (!ValidationUtils.isValidUsername(username)) throw new Exception("Invalid username criteria.");
+        if (!ValidationUtils.isValidPassword(password)) throw new Exception("Weak password standard.");
+        if (!ValidationUtils.isValidAge(age)) throw new Exception("User must be 18 or older.");
+        if (!ValidationUtils.isValidEgyptianPhone(phone)) throw new Exception("Invalid Egyptian phone number.");
+    }
+
+    private void checkDuplicateUser(String username, String phone) throws Exception {
+        boolean exists = accounts.stream().anyMatch(acc ->
+                acc.getUsername().equalsIgnoreCase(username) || acc.getPhoneNumber().equals(phone));
+        if (exists) throw new Exception("Username or phone number already exists.");
+    }
+
+    private void validateTransferLimits(String destinationUsername, double amount, int inputOtp, OtpSession otpSession) throws Exception {
+        if (otpSession == null || !otpSession.validate(inputOtp)) throw new Exception("Invalid or expired OTP.");
+        if (destinationUsername.equalsIgnoreCase(loggedInUser.getUsername())) throw new Exception("Cannot transfer funds to self.");
+        if (System.currentTimeMillis() - loggedInUser.getLastTransactionTime() < 10000) throw new Exception("Rapid transaction detected! Wait 10s.");
+        if (amount < MIN_TRANSACTION || amount > MAX_TRANSACTION) throw new Exception("Amount out of valid transaction bounds.");
+        if (loggedInUser.getDailyTransferredAmount() + amount > DAILY_LIMIT) throw new Exception("Daily transfer limit exceeded.");
+        if (amount > loggedInUser.getBalance()) throw new Exception("Insufficient balance.");
+    }
+
+    private Account findAccountByUsername(String username) throws Exception {
+        return accounts.stream()
+                .filter(acc -> acc.getUsername().equalsIgnoreCase(username))
+                .findFirst()
+                .orElseThrow(() -> new Exception("Account not found: " + username));
+    }
+
     private void checkLoggedIn() throws Exception {
-        if (loggedInUser == null) throw new Exception("Unauthorized access! Please login first.");
+        if (loggedInUser == null) throw new Exception("User authorization required.");
     }
 
     private void checkAdmin() throws Exception {
         checkLoggedIn();
-        if (!loggedInUser.isAdmin()) throw new Exception("Access denied! Action restricted to Administrators.");
+        if (!loggedInUser.isAdmin()) throw new Exception("Action restricted to Administrators.");
     }
-}
-// صنعت بمشقه✨.............
+}// صنعت بمشقه✨.............

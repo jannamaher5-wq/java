@@ -6,12 +6,15 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * util.SecurityUtils Class
- * Handles cryptographic hashing, random salt generation, and data masking.
+ * Utility class providing cryptographic algorithms, secure salt generation, and data masking.
  */
 public class SecurityUtils {
 
-    // Generates a cryptographically strong random salt
+    /**
+     * Generates a cryptographically strong 16-byte random salt.
+     *
+     * @return Base64 encoded string representation of the random salt.
+     */
     public static String generateSalt() {
         SecureRandom random = new SecureRandom();
         byte[] salt = new byte[16];
@@ -19,12 +22,17 @@ public class SecurityUtils {
         return Base64.getEncoder().encodeToString(salt);
     }
 
-    // Hashes raw password using SHA-256 with Salt
+    /**
+     * Computes SHA-256 cryptographic hash of a raw password appended with salt.
+     *
+     * @param password Plain-text raw password string.
+     * @param salt     Random salt string to prevent Rainbow Table attacks.
+     * @return Hexadecimal string representation of hashed password.
+     */
     public static String hashPasswordWithSalt(String password, String salt) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String saltedPassword = password + salt;
-            byte[] encodedHash = digest.digest(saltedPassword.getBytes());
+            byte[] encodedHash = digest.digest((password + salt).getBytes());
 
             StringBuilder hexString = new StringBuilder();
             for (byte b : encodedHash) {
@@ -34,11 +42,16 @@ public class SecurityUtils {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error occurred while hashing password", e);
+            throw new RuntimeException("Error occurred during password hashing", e);
         }
     }
 
-    // Masks Egyptian Phone Number (e.g., 010*******12)
+    /**
+     * Masks an Egyptian phone number for security purposes (e.g., 010*******12).
+     *
+     * @param phone Raw 11-digit phone number.
+     * @return Masked phone string protecting private digits.
+     */
     public static String maskPhoneNumber(String phone) {
         if (phone == null || phone.length() < 11) return phone;
         return phone.substring(0, 3) + "*******" + phone.substring(9);

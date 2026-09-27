@@ -1,12 +1,12 @@
 package service;
 
 import model.Account;
+import model.Transaction;
 import util.OtpSession;
 import java.util.List;
 
 /**
- * service.WalletService Interface
- * Contract defining banking operations and administrative actions.
+ * Interface contract defining wallet business logic, user authorization, and banking operations.
  */
 public interface WalletService {
     boolean register(String username, String rawPassword, int age, String phone) throws Exception;
@@ -18,6 +18,8 @@ public interface WalletService {
     void changePassword(String oldRawPassword, String newRawPassword) throws Exception;
     List<Account> getAllAccounts() throws Exception;
     void toggleAccountStatus(String username, boolean active) throws Exception;
+    void deleteAccount(String username) throws Exception;
+    List<Transaction> getMyTransactionHistory() throws Exception;
     void logout();
     Account getLoggedInUser();
 }
